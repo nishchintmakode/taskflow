@@ -48,17 +48,12 @@ export function CreateTaskModal({ onAddTask }: CreateTaskModalProps) {
 
   // 3. Handle Form Submission
   const onSubmit = (data: TaskFormValues) => {
-    const newTask: Task = {
-      id: crypto.randomUUID(), // Generate a random ID for the new task
-      title: data.title,
-      status: data.status,
-    }
-    
-    onAddTask(newTask) // Send data back to the Board
-    reset() // Clear the form
-    setOpen(false) // Close the modal
+    // Let the database handle the ID!
+    onAddTask({ id: '', title: data.title, status: data.status as 'todo' | 'in-progress' | 'done' }) 
+    reset()
+    setOpen(false)
   }
-
+  
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>

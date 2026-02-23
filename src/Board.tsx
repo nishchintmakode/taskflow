@@ -1,18 +1,10 @@
 // src/Board.tsx
 import { DndContext, type DragEndEvent } from '@dnd-kit/core'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { KanbanColumn } from '@/features/board/components/KanbanColumn'
 import { TaskCard, type Task } from '@/features/board/components/TaskCard'
 import { CreateTaskModal } from '@/features/board/components/CreateTaskModal'
-import { useLocalStorage } from '@/hooks/useLocalStorage'
-
-// Initial mock data
-const INITIAL_TASKS: Task[] = [
-  { id: '1', title: 'Set up Vite & WSL', status: 'done' },
-  { id: '2', title: 'Install Tailwind v4', status: 'done' },
-  { id: '3', title: 'Configure React Router', status: 'in-progress' },
-  { id: '4', title: 'Build Drag and Drop', status: 'todo' },
-  { id: '5', title: 'Connect to Supabase DB', status: 'todo' },
-]
+import { fetchTasks, updateTaskStatus, createTask } from '@/features/board/api/tasksApi'
 
 const COLUMNS = [
   { id: 'todo', title: 'To Do' },
@@ -21,45 +13,70 @@ const COLUMNS = [
 ]
 
 export default function Board() {
-  const [tasks, setTasks] = useLocalStorage<Task[]>('taskflow-tasks', INITIAL_TASKS)
+  const queryClient = useQueryClient()
 
-  // This function fires the moment the user drops a card
+  // 1. Fetch tasks from Supabase!
+  const { data: tasks = [], isLoading } = useQuery({
+    queryKey: ['tasks'],
+    queryFn: fetchTasks,
+  })
+
+  // 2. Mutation for Drag and Drop
+  const updateStatusMutation = useMutation({
+    mutationFn: updateTaskStatus,
+    onSuccess: () => {
+      // Invalidate the cache to instantly refetch the updated data from Supabase
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+    },
+  })
+
+  // 3. Mutation for Creating a Task
+  const createTaskMutation = useMutation({
+    mutationFn: createTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+    },
+  })
+
+  // Handle Drop Event
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
-
-    // If dropped outside a valid column, do nothing
     if (!over) return
 
     const taskId = active.id as string
     const newStatus = over.id as Task['status']
-
-    // Update the task's status in our state
-    setTasks((currentTasks) =>
-      currentTasks.map((task) =>
-        task.id === taskId ? { ...task, status: newStatus } : task
-      )
-    )
+    
+    // Find the task being moved
+    const task = tasks.find(t => t.id === taskId)
+    
+    // Only update if the status actually changed
+    if (task && task.status !== newStatus) {
+      updateStatusMutation.mutate({ id: taskId, status: newStatus })
+    }
   }
 
+  // Handle Form Submission
   const handleAddTask = (newTask: Task) => {
-    setTasks((currentTasks) => [...currentTasks, newTask])
+    // Note: We omit the 'id' because Supabase generates the UUID for us now!
+    createTaskMutation.mutate({ title: newTask.title, status: newTask.status })
   }
+
+  if (isLoading) return <div className="p-8 text-zinc-500">Loading board from cloud...</div>
 
   return (
-    <div className="mb-6 flex items-center justify-between">
+    <div className="h-full flex flex-col">
+      <div className="mb-6 flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-zinc-900">Project Board</h2>
-          <p className="text-zinc-500 mt-1">Drag and drop tasks to update their status.</p>
+          <p className="text-zinc-500 mt-1">Live database connection via Supabase.</p>
         </div>
+        <CreateTaskModal onAddTask={handleAddTask} />
+      </div>
 
-    <CreateTaskModal onAddTask={handleAddTask} />
-
-      {/* The Context Provider that enables drag-and-drop physics */}
       <DndContext onDragEnd={handleDragEnd}>
         <div className="flex gap-6 overflow-x-auto pb-4 h-full">
           {COLUMNS.map((column) => (
             <KanbanColumn key={column.id} id={column.id} title={column.title}>
-              {/* Filter tasks so they render in the correct column */}
               {tasks
                 .filter((task) => task.status === column.id)
                 .map((task) => (
