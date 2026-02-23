@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { DndContext, type DragEndEvent } from '@dnd-kit/core'
 import { KanbanColumn } from '@/features/board/components/KanbanColumn'
 import { TaskCard, type Task } from '@/features/board/components/TaskCard'
+import { CreateTaskModal } from '@/features/board/components/CreateTaskModal'
 
 // Initial mock data
 const INITIAL_TASKS: Task[] = [
@@ -40,12 +41,18 @@ export default function Board() {
     )
   }
 
+  const handleAddTask = (newTask: Task) => {
+    setTasks((currentTasks) => [...currentTasks, newTask])
+  }
+
   return (
-    <div className="h-full flex flex-col">
-      <div className="mb-6">
-        <h2 className="text-3xl font-bold tracking-tight text-zinc-900">Project Board</h2>
-        <p className="text-zinc-500 mt-1">Drag and drop tasks to update their status.</p>
-      </div>
+    <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight text-zinc-900">Project Board</h2>
+          <p className="text-zinc-500 mt-1">Drag and drop tasks to update their status.</p>
+        </div>
+
+    <CreateTaskModal onAddTask={handleAddTask} />
 
       {/* The Context Provider that enables drag-and-drop physics */}
       <DndContext onDragEnd={handleDragEnd}>
