@@ -1,9 +1,9 @@
 // src/Board.tsx
-import { useState } from 'react'
 import { DndContext, type DragEndEvent } from '@dnd-kit/core'
 import { KanbanColumn } from '@/features/board/components/KanbanColumn'
 import { TaskCard, type Task } from '@/features/board/components/TaskCard'
 import { CreateTaskModal } from '@/features/board/components/CreateTaskModal'
+import { useLocalStorage } from '@/hooks/useLocalStorage'
 
 // Initial mock data
 const INITIAL_TASKS: Task[] = [
@@ -21,7 +21,7 @@ const COLUMNS = [
 ]
 
 export default function Board() {
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS)
+  const [tasks, setTasks] = useLocalStorage<Task[]>('taskflow-tasks', INITIAL_TASKS)
 
   // This function fires the moment the user drops a card
   const handleDragEnd = (event: DragEndEvent) => {
